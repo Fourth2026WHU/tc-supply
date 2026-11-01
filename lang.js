@@ -25,15 +25,13 @@ const THAI = {
   "Popular products": "สินค้ายอดนิยม",
   "The products our customers order most.": "สินค้าที่ลูกค้าสั่งบ่อยที่สุด",
   "View all": "ดูทั้งหมด",
-  "Ordering in bulk?": "สั่งจำนวนมาก?",
-  "Get a factory price": "รับราคาจากโรงงาน",
-  "Tell us what you need and how many. We will send you a price.": "บอกเราว่าต้องการสินค้าอะไร จำนวนเท่าไหร่ แล้วเราจะแจ้งราคาให้คุณ",
   "Ask for a quote": "ขอใบเสนอราคา",
   "Shop by category": "เลือกตามหมวดสินค้า",
   "{n} products": "{n} รายการ",
-  "Talk to our family": "คุยกับครอบครัวเราได้เลย",
-  "Have a question about a product or an order? We are happy to help.": "มีคำถามเรื่องสินค้าหรือการสั่งซื้อ เรายินดีช่วยเสมอ",
   "Contact us": "ติดต่อเรา",
+  "Why work with us": "ทำไมต้องเลือกเรา",
+  "Certificates": "ใบรับรอง",
+  "Our customers": "ลูกค้าของเรา",
 
   // Products
   "All products": "สินค้าทั้งหมด",
@@ -52,15 +50,23 @@ const THAI = {
   "Product not found": "ไม่พบสินค้านี้",
   "This product may have been removed.": "สินค้านี้อาจถูกนำออกไปแล้ว",
   "Added to your quote list": "เพิ่มในรายการขอราคาแล้ว",
+  "View list": "ดูรายการ",
+  "The minimum order is {n}": "สั่งขั้นต่ำ {n}",
   "View product photo {n}": "ดูรูปสินค้ารูปที่ {n}",
+  "Print spec sheet": "พิมพ์ข้อมูลสินค้า",
 
   // Quote
-  "Items": "เลือกสินค้า",
+  "List and details": "รายการและข้อมูล",
   "Your details": "ข้อมูลของคุณ",
   "Send": "ส่งคำขอ",
   "Your quote list": "รายการขอราคาของคุณ",
   "Your quote list is empty": "ยังไม่มีสินค้าในรายการ",
-  "Add the products you are interested in, then come back here.": "เพิ่มสินค้าที่คุณสนใจ แล้วกลับมาที่หน้านี้",
+  "Add the products you are interested in, or tell us what you need with the form.": "เพิ่มสินค้าที่คุณสนใจ หรือบอกเราว่าต้องการอะไรในแบบฟอร์ม",
+  "Tell us what you need": "บอกเราว่าคุณต้องการอะไร",
+  "What do you need?": "คุณต้องการอะไร",
+  "The product, how many, and when you need it": "สินค้าที่ต้องการ จำนวน และวันที่ต้องการ",
+  "Hello {factory}, I would like to ask about:": "สวัสดีครับ/ค่ะ {factory} ขอสอบถามเรื่องต่อไปนี้",
+  "Call {phone}": "โทร {phone}",
   "Remove {name}": "นำ {name} ออก",
   "Full name": "ชื่อ-นามสกุล",
   "Company (optional)": "บริษัท (ถ้ามี)",
@@ -97,10 +103,13 @@ const THAI = {
   "Opening hours": "เวลาทำการ",
   "To be added": "รอเพิ่มข้อมูล",
   "Open in Google Maps": "เปิดใน Google Maps",
+  "How to order": "ขั้นตอนการสั่งซื้อ",
+  "Common questions": "คำถามที่พบบ่อย",
 
   // Footer
   "Menu": "เมนู",
   "Categories": "หมวดสินค้า",
+  "Registration no. {n}": "เลขทะเบียน {n}",
   "All rights reserved.": "สงวนลิขสิทธิ์"
 };
 
@@ -115,8 +124,9 @@ function t(text, vars = {}) {
 }
 
 // Picks the current language from a { th, en } value in site-data.js.
+// Plain text, such as a measurement, is the same in both languages.
 function tx(value) {
-  return value[lang];
+  return typeof value === "string" ? value : value[lang];
 }
 
 function setLang(next) {

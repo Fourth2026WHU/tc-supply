@@ -3,7 +3,7 @@
 
 let quote = loadQuote();     // [{ id, qty }]
 let details = null;          // what the customer typed; set when a request is prepared
-let quoteStep = 1;           // 1 items and details, 3 ready to send
+let quoteStep = 1;           // 1 items and details, 2 ready to send
 let filter = "all";
 let search = "";
 let page = "home";
@@ -35,6 +35,18 @@ function findProduct(id) {
   return PRODUCTS.find(p => p.id === id);
 }
 
+function telHref(phone) {
+  return "tel:" + phone.replace(/\D/g, "");
+}
+
+// A new page or a redrawn form loses the keyboard's place, so start again at the heading.
+function focusHeading() {
+  const heading = document.querySelector(".page.active h1");
+  if (!heading) return;
+  heading.tabIndex = -1;
+  heading.focus({ preventScroll: true });
+}
+
 /* ---------- Quote list ---------- */
 
 function loadQuote() {
@@ -59,16 +71,17 @@ function addToQuote(product, qty) {
   if (item) item.qty += qty;
   else quote.push({ id: product.id, qty });
   saveQuote();
-  showToast(t("Added to your quote list"));
+  showToast(t("Added to your quote list"), "#quote", t("View list"));
 }
 
 let toastTimer;
-function showToast(text) {
+function showToast(text, href, linkText) {
   const toast = $("toast");
-  toast.textContent = text;
+  toast.replaceChildren(el("span", "", text));
+  if (href) toast.append(link(href, "", linkText));
   toast.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), href ? 4000 : 2400);
 }
 
 /* ---------- Shared pieces ---------- */
@@ -79,6 +92,8 @@ function productVisual(product) {
     const img = el("img");
     img.src = product.images[0];
     img.alt = tx(product.name);
+    img.loading = "lazy";
+    img.decoding = "async";
     box.append(img);
   } else {
     box.innerHTML = productArt(product.art);
@@ -92,6 +107,7 @@ function productCard(product) {
   a.append(productVisual(product));
   if (product.badge) a.append(el("span", "badge", tx(product.badge)));
   a.append(el("h3", "", tx(product.name)));
+  if (product.code) a.append(el("p", "meta", product.code));
   a.append(el("p", "meta", tx(product.size)));
   a.append(el("p", "moq", t("Minimum {n} {unit}", { n: product.moq, unit: tx(product.unit) })));
   card.append(a);
@@ -133,7 +149,9 @@ function stepper(value, min, onChange) {
   input.setAttribute("aria-label", t("Quantity"));
 
   const set = next => {
-    const qty = Math.max(min, Math.round(Number(next)) || min);
+    const wanted = Math.round(Number(next)) || 0;
+    if (wanted < min) showToast(t("The minimum order is {n}", { n: min }));
+    const qty = Math.max(min, wanted);
     input.value = qty;
     onChange(qty);
   };
@@ -175,25 +193,6 @@ function renderHome() {
   }
   root.append(promises);
 
-  const popular = el("section", "section");
-  popular.append(sectionHead(t("Popular products"), t("The products our customers order most."), "#products"));
-  const grid = el("div", "grid");
-  PRODUCTS.filter(p => p.popular).slice(0, 4).forEach(p => grid.append(productCard(p)));
-  popular.append(grid);
-  root.append(popular);
-
-  const promo = el("section", "promo");
-  const promoCopy = el("div", "promo-copy");
-  promoCopy.append(el("p", "eyebrow", t("Ordering in bulk?")));
-  promoCopy.append(el("h2", "", t("Get a factory price")));
-  promoCopy.append(el("p", "lead", t("Tell us what you need and how many. We will send you a price.")));
-  promoCopy.append(buttonLink("#quote", t("Ask for a quote"), "btn light"));
-  const promoArt = el("div", "promo-art");
-  promoArt.innerHTML = productArt("stack");
-  promoArt.append(el("p", "script", tx(SITE.slogan)));
-  promo.append(promoCopy, promoArt);
-  root.append(promo);
-
   const categories = el("section", "section");
   categories.append(sectionHead(t("Shop by category"), "", "#products"));
   const row = el("div", "categories");
@@ -208,15 +207,76 @@ function renderHome() {
   categories.append(row);
   root.append(categories);
 
+  const popular = el("section", "section");
+  popular.append(sectionHead(t("Popular products"), tx(SITE.text.popular), "#products"));
+  const grid = el("div", "grid");
+  PRODUCTS.filter(p => p.popular).slice(0, 4).forEach(p => grid.append(productCard(p)));
+  popular.append(grid);
+  root.append(popular);
+
+  if (SITE.facts.length || SITE.certificates.length || SITE.customers.length) root.append(proofSection());
+
+  const promo = el("section", "promo");
+  const promoCopy = el("div", "promo-copy");
+  promoCopy.append(el("p", "eyebrow", tx(SITE.text.promoLabel)));
+  promoCopy.append(el("h2", "", tx(SITE.text.promoTitle)));
+  promoCopy.append(el("p", "lead", tx(SITE.text.promoText)));
+  promoCopy.append(buttonLink("#quote", t("Ask for a quote"), "btn light"));
+  const promoArt = el("div", "promo-art");
+  promoArt.innerHTML = productArt("stack");
+  promoArt.append(el("p", "script", tx(SITE.slogan)));
+  promo.append(promoCopy, promoArt);
+  root.append(promo);
+
   root.append(contactBand());
+}
+
+function proofSection() {
+  const section = el("section", "section");
+  section.append(sectionHead(t("Why work with us")));
+  if (SITE.facts.length) {
+    const facts = el("dl", "facts");
+    for (const fact of SITE.facts) {
+      const item = el("div");
+      item.append(el("dt", "", tx(fact.label)), el("dd", "", fact.value));
+      facts.append(item);
+    }
+    section.append(facts);
+  }
+  if (SITE.certificates.length) {
+    section.append(el("h3", "proof-head", t("Certificates")));
+    const list = el("ul", "proof-list");
+    for (const certificate of SITE.certificates) {
+      const li = el("li");
+      li.append(el("b", "", certificate.name), el("small", "", tx(certificate.note)));
+      list.append(li);
+    }
+    section.append(list);
+  }
+  if (SITE.customers.length) {
+    section.append(el("h3", "proof-head", t("Our customers")));
+    const list = el("ul", "proof-list");
+    SITE.customers.forEach(customer => list.append(el("li", "", tx(customer))));
+    section.append(list);
+  }
+  return section;
 }
 
 function contactBand() {
   const band = el("section", "band");
   const copy = el("div");
-  copy.append(el("h2", "", t("Talk to our family")));
-  copy.append(el("p", "lead", t("Have a question about a product or an order? We are happy to help.")));
-  band.append(copy, buttonLink("#contact", t("Contact us"), "btn light"));
+  copy.append(el("h2", "", tx(SITE.text.bandTitle)));
+  copy.append(el("p", "lead", tx(SITE.text.bandText)));
+  const actions = el("div", "actions");
+  actions.append(buttonLink("#contact", t("Contact us"), "btn light"));
+  const phone = SITE.contact.phones[0];
+  if (phone) {
+    const call = link(telHref(phone), "btn outline");
+    call.insertAdjacentHTML("beforeend", icon("phone"));
+    call.append(el("span", "", t("Call {phone}", { phone })));
+    actions.append(call);
+  }
+  band.append(copy, actions);
   return band;
 }
 
@@ -236,6 +296,7 @@ function renderProducts() {
     chip.addEventListener("click", () => {
       filter = category.id;
       renderProducts();
+      $("page-products").querySelector(".chip.active").focus();
     });
     chips.append(chip);
   }
@@ -265,10 +326,15 @@ function fillProductGrid() {
   grid.replaceChildren();
   const words = search.trim().toLowerCase();
   const shown = PRODUCTS.filter(p =>
-    (filter === "all" || p.category === filter) &&
-    (tx(p.name) + " " + tx(p.size)).toLowerCase().includes(words));
+    (filter === "all" || p.category === filter) && searchText(p).includes(words));
   shown.forEach(p => grid.append(productCard(p)));
   if (!shown.length) grid.append(el("p", "empty", t("No products match your search.")));
+}
+
+function searchText(product) {
+  const category = CATEGORIES.find(c => c.id === product.category);
+  return [product.code || "", product.name, product.size, product.description, category ? category.name : ""]
+    .map(tx).join(" ").toLowerCase();
 }
 
 function pageTitle(title, text) {
@@ -317,13 +383,14 @@ function renderProduct() {
   const info = el("div", "info");
   if (product.badge) info.append(el("span", "badge inline", tx(product.badge)));
   info.append(el("h1", "", tx(product.name)));
+  if (product.code) info.append(el("p", "meta", product.code));
   info.append(el("p", "meta", tx(product.size)));
   info.append(el("p", "description", tx(product.description)));
 
   const specs = el("dl", "specs");
   for (const spec of product.specs) {
     const item = el("div");
-    item.append(el("dd", "", spec.value), el("dt", "", tx(spec.label)));
+    item.append(el("dt", "", tx(spec.label)), el("dd", "", tx(spec.value)));
     specs.append(item);
   }
   info.append(specs);
@@ -340,15 +407,21 @@ function renderProduct() {
   info.append(buy);
   info.append(el("p", "moq", t("Minimum {n} {unit}", { n: product.moq, unit: tx(product.unit) })));
 
+  const print = el("button", "text-btn print-btn", t("Print spec sheet"));
+  print.type = "button";
+  print.addEventListener("click", () => window.print());
+  info.append(print);
+  info.append(el("p", "print-contact", tx(SITE.fullName) + " · " + SITE.contact.phones.join(" / ")));
+
   layout.append(gallery, info);
-  root.append(layout);
+  root.append(layout, contactBand());
 }
 
 /* ---------- Quote ---------- */
 
 function renderSteps(active) {
   const steps = el("ol", "steps");
-  ["Items", "Your details", "Send"].forEach((name, i) => {
+  ["List and details", "Send"].forEach((name, i) => {
     const li = el("li", i + 1 <= active ? "active" : "");
     li.append(el("span", "num", i + 1), el("span", "", t(name)));
     steps.append(li);
@@ -356,28 +429,44 @@ function renderSteps(active) {
   return steps;
 }
 
+// Keeps what the customer typed when the form is redrawn.
+function keepTypedDetails() {
+  if (!$("quote-name")) return;
+  details = {
+    name: $("quote-name").value.trim(),
+    company: $("quote-company").value.trim(),
+    phone: $("quote-phone").value.trim(),
+    note: $("quote-note").value.trim()
+  };
+}
+
 function renderQuote() {
   const root = $("page-quote");
+  keepTypedDetails();
   root.replaceChildren();
   root.append(pageTitle(t("Your quote list")));
 
-  if (!quote.length) {
-    const empty = el("div", "empty-card");
-    empty.insertAdjacentHTML("beforeend", icon("clipboard"));
-    empty.append(el("h2", "", t("Your quote list is empty")));
-    empty.append(el("p", "muted", t("Add the products you are interested in, then come back here.")));
-    empty.append(buttonLink("#products", t("See our products")));
-    root.append(empty);
+  if (quoteStep === 2 && details) {
+    root.append(renderSteps(2), renderReady());
     return;
   }
 
-  if (quoteStep === 3 && details) {
-    root.append(renderSteps(3), renderReady());
-    return;
-  }
-
-  root.append(renderSteps(2));
+  root.append(renderSteps(1));
   const layout = el("div", "quote-layout");
+  layout.append(quote.length ? renderQuoteList() : renderEmptyQuote(), renderQuoteForm());
+  root.append(layout);
+}
+
+function renderEmptyQuote() {
+  const empty = el("div", "empty-card");
+  empty.insertAdjacentHTML("beforeend", icon("clipboard"));
+  empty.append(el("h2", "", t("Your quote list is empty")));
+  empty.append(el("p", "muted", t("Add the products you are interested in, or tell us what you need with the form.")));
+  empty.append(buttonLink("#products", t("See our products")));
+  return empty;
+}
+
+function renderQuoteList() {
   const list = el("div", "card");
   list.append(el("h2", "", t("Quote list") + " (" + quote.length + ")"));
   const ul = el("ul", "quote-items");
@@ -395,6 +484,7 @@ function renderQuote() {
       quote = quote.filter(i => i !== item);
       saveQuote();
       renderQuote();
+      focusHeading();
     });
     const qty = stepper(item.qty, product.moq, value => {
       item.qty = value;
@@ -404,14 +494,12 @@ function renderQuote() {
     ul.append(li);
   }
   list.append(ul);
-
-  layout.append(list, renderQuoteForm());
-  root.append(layout);
+  return list;
 }
 
 function renderQuoteForm() {
   const form = el("form", "card form");
-  form.append(el("h2", "", t("Your details")));
+  form.append(el("h2", "", quote.length ? t("Your details") : t("Tell us what you need")));
   const fields = [
     { id: "name", label: "Full name", type: "text", required: true, autocomplete: "name" },
     { id: "company", label: "Company (optional)", type: "text", autocomplete: "organization" },
@@ -428,11 +516,13 @@ function renderQuoteForm() {
     label.append(input);
     form.append(label);
   }
-  const noteLabel = el("label", "", t("Note (optional)"));
+  // With nothing on the list, the note is the request, so it must be filled in.
+  const noteLabel = el("label", "", quote.length ? t("Note (optional)") : t("What do you need?"));
   const note = el("textarea");
   note.id = "quote-note";
   note.rows = 3;
-  note.placeholder = t("Delivery area, the date you need it, or any other details");
+  note.required = !quote.length;
+  note.placeholder = quote.length ? t("Delivery area, the date you need it, or any other details") : t("The product, how many, and when you need it");
   note.value = details ? details.note : "";
   noteLabel.append(note);
   form.append(noteLabel);
@@ -443,29 +533,31 @@ function renderQuoteForm() {
 
   form.addEventListener("submit", e => {
     e.preventDefault();
-    details = {
-      name: $("quote-name").value.trim(),
-      company: $("quote-company").value.trim(),
-      phone: $("quote-phone").value.trim(),
-      note: note.value.trim()
-    };
-    quoteStep = 3;
+    quoteStep = 2;
     renderQuote();
     window.scrollTo(0, 0);
+    focusHeading();
   });
   return form;
 }
 
 function quoteMessage() {
-  const lines = [t("Hello {factory}, I would like a quote for:", { factory: tx(SITE.fullName) }), ""];
-  for (const item of quote) {
-    const product = findProduct(item.id);
-    lines.push("- " + tx(product.name) + " × " + item.qty + " " + tx(product.unit));
+  const factory = tx(SITE.fullName);
+  const lines = [];
+  if (quote.length) {
+    lines.push(t("Hello {factory}, I would like a quote for:", { factory }), "");
+    for (const item of quote) {
+      const product = findProduct(item.id);
+      const code = product.code ? product.code + " " : "";
+      lines.push("- " + code + tx(product.name) + " × " + item.qty + " " + tx(product.unit));
+    }
+  } else {
+    lines.push(t("Hello {factory}, I would like to ask about:", { factory }), "", details.note);
   }
   lines.push("", t("Name") + ": " + details.name);
   if (details.company) lines.push(t("Company") + ": " + details.company);
   lines.push(t("Phone") + ": " + details.phone);
-  if (details.note) lines.push(t("Note") + ": " + details.note);
+  if (quote.length && details.note) lines.push(t("Note") + ": " + details.note);
   return lines.join("\n");
 }
 
@@ -500,7 +592,13 @@ function renderReady() {
     a.append(el("span", "", t("Send by email")));
     actions.append(a);
   }
-  const copy = el("button", contact.line || contact.email ? "btn soft" : "btn");
+  for (const phone of contact.phones) {
+    const a = link(telHref(phone), contact.line || contact.email ? "btn soft" : "btn");
+    a.insertAdjacentHTML("beforeend", icon("phone"));
+    a.append(el("span", "", t("Call {phone}", { phone })));
+    actions.append(a);
+  }
+  const copy = el("button", "btn soft");
   copy.type = "button";
   copy.insertAdjacentHTML("beforeend", icon("copy"));
   const copyText = el("span", "", t("Copy message"));
@@ -516,7 +614,14 @@ function renderReady() {
   actions.append(copy);
   card.append(actions);
 
-  if (!contact.line && !contact.email) {
+  if (contact.lineQr) {
+    const qr = el("img", "qr");
+    qr.src = contact.lineQr;
+    qr.alt = t("Line ID");
+    card.append(qr);
+  }
+
+  if (SITE.sample && !contact.line && !contact.email) {
     card.append(el("p", "hint", t("Sample site: LINE and email will appear here when the factory details are added.")));
   }
 
@@ -525,6 +630,7 @@ function renderReady() {
   edit.addEventListener("click", () => {
     quoteStep = 1;
     renderQuote();
+    focusHeading();
   });
   card.append(edit);
   return card;
@@ -540,7 +646,9 @@ function renderAbout() {
   const copy = el("div");
   copy.append(el("p", "eyebrow dark", t("A family business")));
   copy.append(el("h1", "", t("Our story")));
-  SITE.story.forEach(paragraph => copy.append(el("p", "story", tx(paragraph))));
+  SITE.story
+    .filter(paragraph => SITE.sample || !paragraph.draft)
+    .forEach(paragraph => copy.append(el("p", "story", tx(paragraph))));
   const art = el("div", "about-art");
   art.innerHTML = factoryArt();
   top.append(copy, art);
@@ -548,8 +656,33 @@ function renderAbout() {
 
   const section = el("section", "section");
   section.append(sectionHead(t("How we make our products"), t("From raw materials to your door.")));
+  section.append(processList(SITE.steps));
+  root.append(section);
+
+  if (SITE.ordering.length) {
+    const ordering = el("section", "section");
+    ordering.append(sectionHead(t("How to order")));
+    ordering.append(processList(SITE.ordering));
+    root.append(ordering);
+  }
+
+  if (SITE.faq.length) {
+    const faq = el("section", "section");
+    faq.append(sectionHead(t("Common questions")));
+    for (const item of SITE.faq) {
+      const entry = el("details", "faq");
+      entry.append(el("summary", "", tx(item.q)), el("p", "muted", tx(item.a)));
+      faq.append(entry);
+    }
+    root.append(faq);
+  }
+
+  root.append(contactBandQuote());
+}
+
+function processList(items) {
   const steps = el("ol", "process");
-  SITE.steps.forEach(step => {
+  items.forEach(step => {
     const li = el("li");
     const dot = el("span", "dot");
     dot.innerHTML = icon("check");
@@ -558,8 +691,7 @@ function renderAbout() {
     li.append(dot, text);
     steps.append(li);
   });
-  section.append(steps);
-  root.append(section);
+  return steps;
 }
 
 function renderContact() {
@@ -569,25 +701,38 @@ function renderContact() {
 
   const contact = SITE.contact;
   const items = [
-    { icon: "phone", label: "Phone number", value: contact.phone },
-    { icon: "chat", label: "Line ID", value: contact.line },
-    { icon: "mail", label: "Email", value: contact.email },
+    { icon: "phone", label: "Phone number", links: contact.phones.map(phone => ({ href: telHref(phone), text: phone })) },
+    { icon: "chat", label: "Line ID", links: contact.line ? [{ href: lineHref(contact.line), text: contact.line }] : [], picture: contact.lineQr },
+    { icon: "mail", label: "Email", links: contact.email ? [{ href: "mailto:" + contact.email, text: contact.email }] : [] },
     { icon: "clock", label: "Opening hours", value: tx(contact.hours) }
   ];
   const grid = el("div", "contact-grid");
-  for (const item of items) grid.append(contactCard(item));
-
-  const address = contactCard({ icon: "pin", label: "Address", value: tx(contact.address) });
-  address.classList.add("wide");
-  if (contact.mapUrl) {
-    const map = link(contact.mapUrl, "more", t("Open in Google Maps"));
-    map.target = "_blank";
-    map.rel = "noopener";
-    address.append(map);
+  for (const item of items) {
+    if (SITE.sample || contactFilled(item)) grid.append(contactCard(item));
   }
-  grid.append(address);
+
+  const place = { icon: "pin", label: "Address", value: tx(contact.address) };
+  if (SITE.sample || contactFilled(place)) {
+    const address = contactCard(place);
+    address.classList.add("wide");
+    if (contact.mapUrl) {
+      const map = link(contact.mapUrl, "more", t("Open in Google Maps"));
+      map.target = "_blank";
+      map.rel = "noopener";
+      address.append(map);
+    }
+    grid.append(address);
+  }
   root.append(grid);
   root.append(contactBandQuote());
+}
+
+function lineHref(id) {
+  return "https://line.me/R/ti/p/" + encodeURIComponent(id);
+}
+
+function contactFilled(item) {
+  return !!item.value || !!(item.links && item.links.length);
 }
 
 function contactCard(item) {
@@ -596,16 +741,26 @@ function contactCard(item) {
   pic.innerHTML = icon(item.icon);
   const text = el("div", "contact-text");
   text.append(el("small", "", t(item.label)));
-  text.append(el("b", item.value ? "" : "missing", item.value || t("To be added")));
+  if (item.links && item.links.length) {
+    for (const entry of item.links) text.append(link(entry.href, "contact-link", entry.text));
+  } else {
+    text.append(el("b", item.value ? "" : "missing", item.value || t("To be added")));
+  }
   card.append(pic, text);
+  if (item.picture) {
+    const qr = el("img", "qr");
+    qr.src = item.picture;
+    qr.alt = t(item.label);
+    card.append(qr);
+  }
   return card;
 }
 
 function contactBandQuote() {
   const band = el("section", "band");
   const copy = el("div");
-  copy.append(el("h2", "", t("Get a factory price")));
-  copy.append(el("p", "lead", t("Tell us what you need and how many. We will send you a price.")));
+  copy.append(el("h2", "", tx(SITE.text.promoTitle)));
+  copy.append(el("p", "lead", tx(SITE.text.promoText)));
   band.append(copy, buttonLink("#quote", t("Ask for a quote"), "btn light"));
   return band;
 }
@@ -620,24 +775,52 @@ function renderFooter() {
   const brand = link("#home", "brand");
   brand.append(el("span", "logo", SITE.name), el("span", "", tx(SITE.fullName)));
   about.append(brand, el("p", "muted", tx(SITE.slogan)));
+  const contact = SITE.contact;
+  if (tx(contact.legalName)) about.append(el("p", "muted", tx(contact.legalName)));
+  if (contact.registration) about.append(el("p", "muted", t("Registration no. {n}", { n: contact.registration })));
 
   const menu = el("div");
   menu.append(el("h3", "", t("Menu")));
-  [["#home", "Home"], ["#products", "Products"], ["#about", "About us"], ["#contact", "Contact"]]
+  [["#home", "Home"], ["#products", "Products"], ["#quote", "Quote list"], ["#about", "About us"], ["#contact", "Contact"]]
     .forEach(([href, name]) => menu.append(link(href, "", t(name))));
 
   const categories = el("div");
   categories.append(el("h3", "", t("Categories")));
   CATEGORIES.forEach(c => categories.append(link("#cat-" + c.id, "", tx(c.name))));
 
+  const reach = el("div");
+  reach.append(el("h3", "", t("Contact")));
+  contact.phones.forEach(phone => reach.append(link(telHref(phone), "", phone)));
+  if (contact.line) reach.append(link(lineHref(contact.line), "", "LINE " + contact.line));
+  if (contact.email) reach.append(link("mailto:" + contact.email, "", contact.email));
+
   const copyright = el("p", "copyright", "© " + new Date().getFullYear() + " " + tx(SITE.fullName) + ". " + t("All rights reserved."));
-  root.append(about, menu, categories, copyright);
+  root.append(about, menu, categories, reach, copyright);
+}
+
+function pageName() {
+  if (page === "product") {
+    const product = findProduct(productId);
+    return product ? tx(product.name) : t("Product not found");
+  }
+  return { products: t("All products"), quote: t("Your quote list"), about: t("About us"), contact: t("Contact us") }[page];
+}
+
+function updateTitle() {
+  const name = pageName();
+  document.title = name ? name + " | " + tx(SITE.fullName) : tx(SITE.fullName);
 }
 
 function renderAll() {
   translateStatic();
-  document.title = tx(SITE.fullName);
+  updateTitle();
   $("brand-name").textContent = tx(SITE.fullName);
+  const phone = SITE.contact.phones[0];
+  $("top-phone").hidden = !phone;
+  if (phone) {
+    $("top-phone").href = telHref(phone);
+    $("top-phone-number").textContent = phone;
+  }
   $("lang-btn").textContent = lang === "th" ? "EN" : "ไทย";
   $("lang-btn").setAttribute("aria-label", lang === "th" ? "Switch to English" : "เปลี่ยนเป็นภาษาไทย");
   renderHome();
@@ -654,7 +837,7 @@ function renderAll() {
 
 function route() {
   const hash = location.hash.slice(1) || "home";
-  if (hash === "view") return; // the "skip to content" link stays on this page
+  $("toast").classList.remove("show");
   page = hash;
   if (hash.startsWith("product-")) {
     productId = hash.slice("product-".length);
@@ -678,16 +861,24 @@ function route() {
     if (on) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
+  updateTitle();
   window.scrollTo(0, 0);
 }
 
 document.querySelectorAll("[data-icon]").forEach(node => { node.innerHTML = icon(node.dataset.icon); });
+document.querySelector(".skip").addEventListener("click", e => {
+  e.preventDefault();
+  focusHeading();
+});
 $("sample-bar").hidden = !SITE.sample;
 $("lang-btn").addEventListener("click", () => {
   setLang(lang === "th" ? "en" : "th");
   renderAll();
 });
-window.addEventListener("hashchange", route);
+window.addEventListener("hashchange", () => {
+  route();
+  focusHeading();
+});
 
 /* ---------- Password screen ---------- */
 

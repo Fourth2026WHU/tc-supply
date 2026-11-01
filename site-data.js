@@ -13,12 +13,18 @@ const SITE = {
   fullName: { th: "ไทชิ ซับพลาย", en: "TC Supply" },
   slogan: { th: "ผลิตด้วยความใส่ใจจากครอบครัวของเรา", en: "Made with care by our family" },
 
-  // Leave a contact empty ("") and the website shows "To be added".
+  // Leave a contact empty ("") and it shows "To be added" on the sample site.
+  // When sample is false, an empty contact is left out.
   // line is your LINE Official Account ID, for example "@tcfactory".
+  // lineQr is a picture of your LINE QR code, for example "images/line-qr.png".
+  // legalName and registration appear in the footer once they are filled in.
   contact: {
-    phone: "095-849-1276 / 081-620-5769",
+    phones: ["095-849-1276", "081-620-5769"],
     line: "",
+    lineQr: "",
     email: "",
+    legalName: { th: "", en: "" },
+    registration: "",
     address: { th: "", en: "" },
     hours: { th: "", en: "" },
     mapUrl: ""
@@ -41,13 +47,40 @@ const SITE = {
     { icon: "truck", title: { th: "จัดส่งถึงคุณ", en: "Delivered to you" }, text: { th: "สอบถามค่าส่งได้เลย", en: "Ask us about shipping" } }
   ],
 
-  // The story on the About page. Each item is one paragraph.
+  // Lines used around the site. Keep only what is true for your factory.
+  text: {
+    popular: { th: "สินค้าที่ลูกค้าสั่งบ่อยที่สุด", en: "The products our customers order most." },
+    promoLabel: { th: "สั่งจำนวนมาก?", en: "Ordering in bulk?" },
+    promoTitle: { th: "รับราคาจากโรงงาน", en: "Get a factory price" },
+    promoText: { th: "บอกเราว่าต้องการสินค้าอะไร จำนวนเท่าไหร่ แล้วเราจะแจ้งราคาให้คุณ", en: "Tell us what you need and how many. We will send you a price." },
+    bandTitle: { th: "คุยกับครอบครัวเราได้เลย", en: "Talk to our family" },
+    bandText: { th: "มีคำถามเรื่องสินค้าหรือการสั่งซื้อ เรายินดีช่วยเสมอ", en: "Have a question about a product or an order? We are happy to help." }
+  },
+
+  // Proof shown on the home page. Each list stays hidden while it is empty.
+  // facts: { value: "1998", label: { th: "ปีที่ก่อตั้ง", en: "Founded" } }
+  // certificates: { name: "ISO 9001", note: { th: "สินค้าที่ครอบคลุม", en: "Products covered" } }
+  // customers: { th: "ชื่อลูกค้า", en: "Customer name" }, only with their permission
+  facts: [],
+  certificates: [],
+  customers: [],
+
+  // How to order and common questions, on the About page. Hidden while empty.
+  // ordering: { title: { th: "...", en: "..." }, text: { th: "...", en: "..." } }
+  // faq: { q: { th: "...", en: "..." }, a: { th: "...", en: "..." } }
+  ordering: [],
+  faq: [],
+
+  // The story on the About page. Each item is one paragraph. A paragraph marked
+  // draft is only shown on the sample site, so remove draft when it is real.
   story: [
     {
+      draft: true,
       th: "เล่าเรื่องของครอบครัวตรงนี้: โรงงานเริ่มต้นเมื่อไหร่ ใครเป็นคนเริ่ม และเริ่มจากอะไร",
       en: "Tell your family's story here: when the factory started, who started it, and how."
     },
     {
+      draft: true,
       th: "เล่าต่อว่าวันนี้เราทำอะไรอยู่ ลูกค้าของเราเป็นใคร และอะไรทำให้สินค้าของเราต่างจากที่อื่น",
       en: "Then say what you do today, who your customers are, and what makes your products different."
     }
@@ -86,11 +119,13 @@ const PRODUCTS = [
 ];
 
 // Makes the sample products. Replace PRODUCTS with real blocks like this one:
-// { id: "p1", category: "a", art: "box", images: [], popular: true, moq: 50,
+// { id: "p1", code: "TC-001", category: "a", art: "box", images: [], popular: true, moq: 50,
 //   unit: { th: "ชิ้น", en: "pcs" }, badge: null,
 //   name: { th: "ชื่อสินค้า", en: "Product name" }, size: { th: "...", en: "..." },
 //   description: { th: "...", en: "..." },
 //   specs: [{ value: "...", label: { th: "...", en: "..." } }] }
+// code is optional. specs can have any number of rows, and a value can be plain
+// text or have two languages: { th: "ไม้", en: "Wood" }.
 function sampleProduct(n, category, art, popular, badgeTh, badgeEn) {
   return {
     id: "p" + n,
