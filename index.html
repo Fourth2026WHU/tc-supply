@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>TC Supply</title>
+  <meta name="claude:viewport-fit-sides" content="cover">
+  <meta name="theme-color" content="#4a5ff0">
+  <!-- Remove this line at launch so Google can list the site -->
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Charm:wght@700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Prompt:wght@500;600&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Colours for the drawings. They live here because a colour inside a hidden page stops working. -->
+  <svg class="art-defs" aria-hidden="true">
+    <defs>
+      <linearGradient id="drum" x1="0" x2="1">
+        <stop offset="0" stop-color="#4a5ff0"/><stop offset=".55" stop-color="#9aa8fb"/><stop offset="1" stop-color="#6a55ec"/>
+      </linearGradient>
+      <radialGradient id="glow">
+        <stop offset="0" stop-color="#7d8dff" stop-opacity=".75"/><stop offset="1" stop-color="#7d8dff" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+  </svg>
+
+  <!-- Password screen: shown until the password is typed -->
+  <section id="gate" hidden>
+    <form id="gate-form" class="card">
+      <span class="logo">TC</span>
+      <h1 id="gate-name"></h1>
+      <p class="muted" data-t>Enter the password to view this site.</p>
+      <label for="gate-pass" data-t>Password</label>
+      <input type="password" id="gate-pass" autocomplete="current-password" required>
+      <p id="gate-error" role="alert" hidden></p>
+      <button type="submit" class="btn" data-t>Open site</button>
+    </form>
+  </section>
+
+  <a class="skip" href="#view" data-t>Skip to content</a>
+  <div id="sample-bar" hidden><span data-t>Sample site. The product names, details and contact information are not real yet.</span></div>
+
+  <header class="topbar">
+    <a class="brand" href="#home">
+      <span class="logo" id="brand-mark">TC</span>
+      <span id="brand-name"></span>
+    </a>
+    <nav class="links" aria-label="Main">
+      <a href="#home" data-route="home" data-t>Home</a>
+      <a href="#products" data-route="products" data-t>Products</a>
+      <a href="#about" data-route="about" data-t>About us</a>
+      <a href="#contact" data-route="contact" data-t>Contact</a>
+    </nav>
+    <div class="tools">
+      <button type="button" id="lang-btn" class="lang"></button>
+      <a class="quote-link" href="#quote">
+        <span data-icon="clipboard"></span>
+        <span class="label" data-t>Quote list</span>
+        <span class="count" data-quote-count hidden>0</span>
+      </a>
+    </div>
+  </header>
+
+  <main id="view">
+    <section id="page-home" class="page"></section>
+    <section id="page-products" class="page"></section>
+    <section id="page-product" class="page"></section>
+    <section id="page-quote" class="page"></section>
+    <section id="page-about" class="page"></section>
+    <section id="page-contact" class="page"></section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-in" id="footer"></div>
+  </footer>
+
+  <!-- Phone menu: at the bottom, like the inventory app -->
+  <nav class="tabbar" aria-label="Phone menu">
+    <a href="#home" data-route="home"><span data-icon="home"></span><span data-t>Home</span></a>
+    <a href="#products" data-route="products"><span data-icon="box"></span><span data-t>Products</span></a>
+    <a href="#quote" data-route="quote" class="main">
+      <span class="ico" data-icon="clipboard"></span>
+      <span class="count" data-quote-count hidden>0</span>
+      <span data-t>Quote</span>
+    </a>
+    <a href="#about" data-route="about"><span data-icon="factory"></span><span data-t>About</span></a>
+    <a href="#contact" data-route="contact"><span data-icon="phone"></span><span data-t>Contact</span></a>
+  </nav>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="site-data.js"></script>
+  <script src="lang.js"></script>
+  <script src="art.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
