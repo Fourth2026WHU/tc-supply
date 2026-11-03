@@ -54,6 +54,11 @@ const THAI = {
   "The minimum order is {n}": "สั่งขั้นต่ำ {n}",
   "View product photo {n}": "ดูรูปสินค้ารูปที่ {n}",
   "Print spec sheet": "พิมพ์ข้อมูลสินค้า",
+  "See the photo full size": "ดูรูปเต็ม",
+  "Tap the photo to see it full size": "แตะที่รูปเพื่อดูรูปเต็ม",
+  "Close": "ปิด",
+  "Previous photo": "รูปก่อนหน้า",
+  "Next photo": "รูปถัดไป",
 
   // Quote
   "List and details": "รายการและข้อมูล",

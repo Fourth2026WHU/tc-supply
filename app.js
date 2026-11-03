@@ -354,6 +354,43 @@ function pageTitle(title, text) {
 
 /* ---------- Product page ---------- */
 
+// Shows a product's photos full screen. The arrow keys or buttons move between them.
+function openPhotos(product, start) {
+  const photos = product.images;
+  let i = start;
+  const box = el("dialog", "lightbox");
+  box.setAttribute("aria-label", tx(product.name));
+  const img = el("img");
+  img.alt = tx(product.name);
+  const count = el("p", "lightbox-count");
+  const show = n => {
+    i = (n + photos.length) % photos.length;
+    img.src = photos[i];
+    count.textContent = photos.length > 1 ? (i + 1) + " / " + photos.length : "";
+  };
+  const button = (cls, label, text, action) => {
+    const b = el("button", "lightbox-btn " + cls, text);
+    b.type = "button";
+    b.setAttribute("aria-label", label);
+    b.addEventListener("click", e => { e.stopPropagation(); action(); });
+    return b;
+  };
+  box.append(img, count, button("close", t("Close"), "×", () => box.close()));
+  if (photos.length > 1) {
+    box.append(button("prev", t("Previous photo"), "‹", () => show(i - 1)));
+    box.append(button("next", t("Next photo"), "›", () => show(i + 1)));
+  }
+  box.addEventListener("click", () => box.close());
+  box.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") show(i - 1);
+    if (e.key === "ArrowRight") show(i + 1);
+  });
+  box.addEventListener("close", () => box.remove());
+  show(start);
+  document.body.append(box);
+  box.showModal();
+}
+
 function renderProduct() {
   const root = $("page-product");
   root.replaceChildren();
@@ -371,7 +408,18 @@ function renderProduct() {
   const layout = el("div", "detail");
   const gallery = el("div", "gallery");
   const main = productVisual(product);
-  gallery.append(main);
+  let shown = 0;
+  if (product.images.length) {
+    // Tapping the photo opens it full size, so tall photos are never cut off.
+    const zoom = el("button", "zoom");
+    zoom.type = "button";
+    zoom.setAttribute("aria-label", t("See the photo full size"));
+    zoom.append(main);
+    zoom.addEventListener("click", () => openPhotos(product, shown));
+    gallery.append(zoom);
+  } else {
+    gallery.append(main);
+  }
   if (product.images.length > 1) {
     const thumbs = el("div", "thumbs");
     product.images.forEach((src, i) => {
@@ -382,11 +430,12 @@ function renderProduct() {
       img.src = src;
       img.alt = "";
       thumb.append(img);
-      thumb.addEventListener("click", () => { main.querySelector("img").src = src; });
+      thumb.addEventListener("click", () => { main.querySelector("img").src = src; shown = i; });
       thumbs.append(thumb);
     });
     gallery.append(thumbs);
   }
+  if (product.images.length) gallery.append(el("p", "meta zoom-hint", t("Tap the photo to see it full size")));
 
   const info = el("div", "info");
   if (product.badge) info.append(el("span", "badge inline", tx(product.badge)));
