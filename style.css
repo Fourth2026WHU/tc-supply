@@ -244,6 +244,7 @@ main {
 }
 .category:hover b { color: var(--accent-text); }
 .category .pic { width: 78px; }
+.category .pic img { display: block; width: 78px; height: 78px; object-fit: cover; border-radius: 12px; }
 .category b { font-weight: 600; font-size: 0.95rem; }
 .category small { color: var(--muted); }
 
@@ -272,6 +273,7 @@ main {
 .gallery { min-width: 0; display: grid; gap: 10px; }
 .gallery .visual { background: var(--card); box-shadow: var(--shadow); border-radius: 18px; }
 .gallery .visual svg.art { width: 72%; }
+.gallery .visual img { object-fit: contain; }
 .thumbs { display: flex; gap: 8px; }
 .thumbs button { width: 66px; height: 66px; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; }
 .thumbs img { width: 100%; height: 100%; object-fit: cover; }

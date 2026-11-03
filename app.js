@@ -199,7 +199,15 @@ function renderHome() {
   for (const category of CATEGORIES) {
     const a = link("#cat-" + category.id, "category");
     const pic = el("div", "pic");
-    pic.innerHTML = productArt(category.art);
+    if (category.image) {
+      const img = el("img");
+      img.src = category.image;
+      img.alt = "";
+      img.loading = "lazy";
+      pic.append(img);
+    } else {
+      pic.innerHTML = productArt(category.art);
+    }
     const count = PRODUCTS.filter(p => p.category === category.id).length;
     a.append(pic, el("b", "", tx(category.name)), el("small", "", t("{n} products", { n: count })));
     row.append(a);
@@ -385,7 +393,7 @@ function renderProduct() {
   info.append(el("h1", "", tx(product.name)));
   if (product.code) info.append(el("p", "meta", product.code));
   info.append(el("p", "meta", tx(product.size)));
-  info.append(el("p", "description", tx(product.description)));
+  if (tx(product.description)) info.append(el("p", "description", tx(product.description)));
 
   const specs = el("dl", "specs");
   for (const spec of product.specs) {
