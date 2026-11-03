@@ -643,14 +643,8 @@ function renderReady() {
     a.append(el("span", "", t("Send on LINE")));
     actions.append(a);
   }
-  if (contact.email) {
-    const a = link("mailto:" + contact.email + "?subject=" + encodeURIComponent(t("Quote request")) + "&body=" + encodeURIComponent(message), "btn");
-    a.insertAdjacentHTML("beforeend", icon("mail"));
-    a.append(el("span", "", t("Send by email")));
-    actions.append(a);
-  }
   for (const phone of contact.phones) {
-    const a = link(telHref(phone), contact.line || contact.email ? "btn soft" : "btn");
+    const a = link(telHref(phone), contact.line ? "btn soft" : "btn");
     a.insertAdjacentHTML("beforeend", icon("phone"));
     a.append(el("span", "", t("Call {phone}", { phone })));
     actions.append(a);
@@ -678,8 +672,8 @@ function renderReady() {
     card.append(qr);
   }
 
-  if (SITE.sample && !contact.line && !contact.email) {
-    card.append(el("p", "hint", t("Sample site: LINE and email will appear here when the factory details are added.")));
+  if (SITE.sample && !contact.line) {
+    card.append(el("p", "hint", t("Sample site: the LINE button will appear here when the factory details are added.")));
   }
 
   const edit = el("button", "text-btn", t("Edit my request"));
@@ -760,7 +754,6 @@ function renderContact() {
   const items = [
     { icon: "phone", label: "Phone number", links: contact.phones.map(phone => ({ href: telHref(phone), text: phone })) },
     { icon: "chat", label: "Line ID", links: contact.line ? [{ href: lineHref(contact.line), text: contact.line }] : [], picture: contact.lineQr },
-    { icon: "mail", label: "Email", links: contact.email ? [{ href: "mailto:" + contact.email, text: contact.email }] : [] },
     { icon: "clock", label: "Opening hours", value: tx(contact.hours) }
   ];
   const grid = el("div", "contact-grid");
@@ -849,7 +842,6 @@ function renderFooter() {
   reach.append(el("h3", "", t("Contact")));
   contact.phones.forEach(phone => reach.append(link(telHref(phone), "", phone)));
   if (contact.line) reach.append(link(lineHref(contact.line), "", "LINE " + contact.line));
-  if (contact.email) reach.append(link("mailto:" + contact.email, "", contact.email));
 
   const copyright = el("p", "copyright", "© " + new Date().getFullYear() + " " + tx(SITE.fullName) + ". " + t("All rights reserved."));
   root.append(about, menu, categories, reach, copyright);

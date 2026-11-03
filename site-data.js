@@ -22,7 +22,6 @@ const SITE = {
     phones: ["095-849-1276", "081-620-5769"],
     line: "",
     lineQr: "",
-    email: "",
     legalName: { th: "", en: "" },
     registration: "",
     address: { th: "", en: "" },
