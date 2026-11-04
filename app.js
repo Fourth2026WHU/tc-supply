@@ -4,6 +4,7 @@
 let quote = loadQuote();     // [{ id, qty }]
 let details = null;          // what the customer typed; set when a request is prepared
 let quoteStep = 1;           // 1 items and details, 2 ready to send
+let sentOrder = null;        // the order number when the request reached the factory
 let filter = "all";
 let search = "";
 let page = "home";
@@ -584,12 +585,16 @@ function renderQuoteForm() {
   noteLabel.append(note);
   form.append(noteLabel);
 
-  const submit = el("button", "btn", t("Prepare my request"));
+  const submit = el("button", "btn", t("Send my request"));
   submit.type = "submit";
   form.append(submit, el("p", "hint", t("We will reply with prices and delivery details.")));
 
-  form.addEventListener("submit", e => {
+  form.addEventListener("submit", async e => {
     e.preventDefault();
+    keepTypedDetails();
+    submit.disabled = true;
+    submit.textContent = t("Sending...");
+    sentOrder = await sendOrder();
     quoteStep = 2;
     renderQuote();
     window.scrollTo(0, 0);
@@ -598,9 +603,38 @@ function renderQuoteForm() {
   return form;
 }
 
+// Sends the request to the factory's stock app. Gives back the order number,
+// or null when it could not be sent, so the customer sends it on LINE instead.
+async function sendOrder() {
+  const db = SITE.orderDatabase;
+  if (!db || !db.url) return null;
+  const lines = quote.map(item => {
+    const product = findProduct(item.id);
+    return { code: product.code, name: product.name.th, qty: item.qty, unit: product.unit.th };
+  });
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), 15000);
+  try {
+    const reply = await fetch(db.url + "/rest/v1/rpc/submit_web_order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: db.key },
+      body: JSON.stringify({ p_name: details.name, p_phone: details.phone, p_lines: lines, p_company: details.company, p_note: details.note }),
+      signal: stop.signal
+    });
+    if (!reply.ok) return null;
+    const id = await reply.json();
+    return Number.isInteger(id) ? id : null;
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function quoteMessage() {
   const factory = tx(SITE.fullName);
   const lines = [];
+  if (sentOrder) lines.push(t("Order #{n}", { n: sentOrder }));
   if (quote.length) {
     lines.push(t("Hello {factory}, I would like a quote for:", { factory }), "");
     for (const item of quote) {
@@ -622,8 +656,13 @@ function renderReady() {
   const card = el("div", "card ready");
   const tick = el("div", "tick");
   tick.innerHTML = icon("check");
-  card.append(tick, el("h2", "", t("Your request is ready to send")));
-  card.append(el("p", "muted", t("It has not been sent yet. Send this message to us with one of the options below.")));
+  if (sentOrder) {
+    card.append(tick, el("h2", "", t("We received your order #{n}", { n: sentOrder })));
+    card.append(el("p", "muted", t("We will call you or message you on LINE with prices and delivery details. For a faster reply, you can also send it to us on LINE.")));
+  } else {
+    card.append(tick, el("h2", "", t("Your request is ready to send")));
+    card.append(el("p", "muted", t("It has not been sent yet. Send this message to us with one of the options below.")));
+  }
 
   const message = quoteMessage();
   const box = el("textarea", "message");
@@ -676,9 +715,16 @@ function renderReady() {
     card.append(el("p", "hint", t("Sample site: the LINE button will appear here when the factory details are added.")));
   }
 
-  const edit = el("button", "text-btn", t("Edit my request"));
+  // A sent order cannot be edited, or the factory would get it twice
+  const edit = el("button", "text-btn", sentOrder ? t("Start a new request") : t("Edit my request"));
   edit.type = "button";
   edit.addEventListener("click", () => {
+    if (sentOrder) {
+      quote = [];
+      saveQuote();
+      details = { ...details, note: "" };
+      sentOrder = null;
+    }
     quoteStep = 1;
     renderQuote();
     focusHeading();
