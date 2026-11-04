@@ -2,9 +2,10 @@
 // All the text about the factory comes from site-data.js.
 
 let quote = loadQuote();     // [{ id, qty }]
-let details = null;          // what the customer typed; set when a request is prepared
-let quoteStep = 1;           // 1 items and details, 2 ready to send
-let sentOrder = null;        // the order number when the request reached the factory
+let sent = loadSent();       // the last request that reached the factory: { id, at, items, details }
+let details = sent ? sent.details : null; // what the customer typed; set when a request is prepared
+let quoteStep = sent ? 2 : 1; // 1 items and details, 2 ready to send or sent
+let sendError = "";          // why the last request could not be sent
 let filter = "all";
 let search = "";
 let page = "home";
@@ -67,7 +68,36 @@ function saveQuote() {
   });
 }
 
+// The sent request is kept so a reload still shows its number,
+// and the list is emptied so it cannot be sent twice.
+function loadSent() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("site-sent"));
+    if (!saved || !Number.isInteger(saved.id) || !saved.details) return null;
+    saved.items = (saved.items || []).filter(item => findProduct(item.id));
+    return saved;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveSent() {
+  try {
+    if (sent) localStorage.setItem("site-sent", JSON.stringify(sent));
+    else localStorage.removeItem("site-sent");
+  } catch (e) { /* the number still shows until the page closes */ }
+}
+
+// Adding a product after a request was sent starts a new request.
+function startNewRequest() {
+  if (sent) details = { ...sent.details, note: "" };
+  sent = null;
+  saveSent();
+  quoteStep = 1;
+}
+
 function addToQuote(product, qty) {
+  if (sent) startNewRequest();
   const item = quote.find(i => i.id === product.id);
   if (item) item.qty += qty;
   else quote.push({ id: product.id, qty });
@@ -585,16 +615,46 @@ function renderQuoteForm() {
   noteLabel.append(note);
   form.append(noteLabel);
 
+  const error = el("p", "form-error");
+  error.setAttribute("role", "alert");
+  error.hidden = true;
   const submit = el("button", "btn", t("Send my request"));
   submit.type = "submit";
-  form.append(submit, el("p", "hint", t("We will reply with prices and delivery details.")));
+  form.append(error, submit, el("p", "hint", t("We will reply with prices and delivery details.")));
+
+  const showError = text => {
+    error.textContent = text;
+    error.hidden = false;
+  };
 
   form.addEventListener("submit", async e => {
     e.preventDefault();
     keepTypedDetails();
+    error.hidden = true;
+    // The same check the factory's system makes, so the customer can fix it here
+    const digits = details.phone.replace(/[^0-9+]/g, "").length;
+    if (digits < 9 || digits > 15) {
+      showError(t("Please check the phone number, for example 081 234 5678."));
+      $("quote-phone").focus();
+      return;
+    }
     submit.disabled = true;
     submit.textContent = t("Sending...");
-    sentOrder = await sendOrder();
+    const result = await sendOrder();
+    if (result.fix) {
+      // Something the customer typed was not accepted: stay on the form
+      submit.disabled = false;
+      submit.textContent = t("Send my request");
+      showError(result.error);
+      return;
+    }
+    sendError = result.error || "";
+    if (result.id) {
+      sent = { id: result.id, at: Date.now(), items: quote, details };
+      saveSent();
+      quote = [];
+      saveQuote();
+    }
     quoteStep = 2;
     renderQuote();
     window.scrollTo(0, 0);
@@ -603,11 +663,23 @@ function renderQuoteForm() {
   return form;
 }
 
-// Sends the request to the factory's stock app. Gives back the order number,
-// or null when it could not be sent, so the customer sends it on LINE instead.
+// What the factory's system says when it turns a request down.
+// fix: true means the customer can correct it on the form.
+const ORDER_ERRORS = {
+  "Please fill in your name.": true,
+  "Please check the phone number.": true,
+  "The text is too long.": true,
+  "Add a product or tell us what you need.": true,
+  "The product list is not valid.": false,
+  "Too many orders right now. Please send it on LINE or call us.": false
+};
+
+// Sends the request to the factory's stock app. Gives back { id } with the
+// request number, or { error, fix } when it could not be sent, so the
+// customer can correct it or send it on LINE instead.
 async function sendOrder() {
   const db = SITE.orderDatabase;
-  if (!db || !db.url) return null;
+  if (!db || !db.url) return {};
   const lines = quote.map(item => {
     const product = findProduct(item.id);
     return { code: product.code, name: product.name.th, qty: item.qty, unit: product.unit.th };
@@ -621,11 +693,17 @@ async function sendOrder() {
       body: JSON.stringify({ p_name: details.name, p_phone: details.phone, p_lines: lines, p_company: details.company, p_note: details.note }),
       signal: stop.signal
     });
-    if (!reply.ok) return null;
+    if (!reply.ok) {
+      const body = await reply.json().catch(() => ({}));
+      if (body.message in ORDER_ERRORS) return { error: t(body.message), fix: ORDER_ERRORS[body.message] };
+      return { error: t("The factory's system could not take the request right now.") };
+    }
     const id = await reply.json();
-    return Number.isInteger(id) ? id : null;
+    return Number.isInteger(id) ? { id } : { error: t("The factory's system could not take the request right now.") };
   } catch (e) {
-    return null;
+    // After a timeout the request may still have arrived, so say so instead of inviting a second send
+    if (e.name === "AbortError") return { error: t("The connection was too slow, so we are not sure the request arrived. Please call us before sending it again.") };
+    return { error: t("We could not connect. Check your internet, or send it to us below.") };
   } finally {
     clearTimeout(timer);
   }
@@ -633,11 +711,12 @@ async function sendOrder() {
 
 function quoteMessage() {
   const factory = tx(SITE.fullName);
+  const items = sent ? sent.items : quote;
   const lines = [];
-  if (sentOrder) lines.push(t("Order #{n}", { n: sentOrder }));
-  if (quote.length) {
+  if (sent) lines.push(t("Request #{n}", { n: sent.id }));
+  if (items.length) {
     lines.push(t("Hello {factory}, I would like a quote for:", { factory }), "");
-    for (const item of quote) {
+    for (const item of items) {
       const product = findProduct(item.id);
       const code = product.code ? product.code + " " : "";
       lines.push("- " + code + tx(product.name) + " × " + item.qty + " " + tx(product.unit));
@@ -648,7 +727,7 @@ function quoteMessage() {
   lines.push("", t("Name") + ": " + details.name);
   if (details.company) lines.push(t("Company") + ": " + details.company);
   lines.push(t("Phone") + ": " + details.phone);
-  if (quote.length && details.note) lines.push(t("Note") + ": " + details.note);
+  if (items.length && details.note) lines.push(t("Note") + ": " + details.note);
   return lines.join("\n");
 }
 
@@ -656,12 +735,19 @@ function renderReady() {
   const card = el("div", "card ready");
   const tick = el("div", "tick");
   tick.innerHTML = icon("check");
-  if (sentOrder) {
-    card.append(tick, el("h2", "", t("We received your order #{n}", { n: sentOrder })));
-    card.append(el("p", "muted", t("We will call you or message you on LINE with prices and delivery details. For a faster reply, you can also send it to us on LINE.")));
+  const contact = SITE.contact;
+  if (sent) {
+    const when = new Date(sent.at).toLocaleString(lang === "th" ? "th-TH" : "en-GB", { dateStyle: "medium", timeStyle: "short" });
+    card.append(tick, el("h2", "", t("We received your price request #{n}", { n: sent.id })));
+    card.append(el("p", "hint", t("Sent on {date}", { date: when })));
+    card.append(el("p", "muted", t("This is not an order yet. We will contact you with prices and delivery details, and the order starts once you agree.")));
+    card.append(el("p", "muted", contact.line
+      ? t("Keep this number. To add details, send this message to us on LINE.")
+      : t("Keep this number. To change anything, call us and give this number.")));
   } else {
     card.append(tick, el("h2", "", t("Your request is ready to send")));
     card.append(el("p", "muted", t("It has not been sent yet. Send this message to us with one of the options below.")));
+    if (sendError) card.append(el("p", "form-error", sendError));
   }
 
   const message = quoteMessage();
@@ -673,7 +759,6 @@ function renderReady() {
   card.append(box);
 
   const actions = el("div", "ready-actions");
-  const contact = SITE.contact;
   if (contact.line) {
     const a = link("https://line.me/R/oaMessage/" + encodeURIComponent(contact.line) + "/?" + encodeURIComponent(message), "btn");
     a.target = "_blank";
@@ -716,16 +801,10 @@ function renderReady() {
   }
 
   // A sent order cannot be edited, or the factory would get it twice
-  const edit = el("button", "text-btn", sentOrder ? t("Start a new request") : t("Edit my request"));
+  const edit = el("button", "text-btn", sent ? t("Start a new request") : t("Edit my request"));
   edit.type = "button";
   edit.addEventListener("click", () => {
-    if (sentOrder) {
-      quote = [];
-      saveQuote();
-      details = { ...details, note: "" };
-      sentOrder = null;
-    }
-    quoteStep = 1;
+    startNewRequest();
     renderQuote();
     focusHeading();
   });
