@@ -36,8 +36,8 @@ function iso(ox, oy) {
   return { p, poly, box };
 }
 
-const CARDBOARD = ["#dfe5ff", "#7f8ff5", "#aab6fa"];
-const TAPE = "#4a5ff0";
+const CARDBOARD = ["#dfe8f2", "#5b8fd4", "#a5c0e3"];
+const TAPE = "#0b57b0";
 
 // Product drawing, used by any product with no photos yet.
 function productArt(kind) {
@@ -49,37 +49,37 @@ function productArt(kind) {
       d.poly([d.p(52, 0, 105), d.p(78, 0, 105), d.p(78, 0, 60), d.p(52, 0, 60)], TAPE);
   } else if (kind === "stack") {
     shape = d.box(0, 0, 0, 120, 110, 58, CARDBOARD) +
-      d.box(12, 8, 58, 95, 90, 54, ["#eef1ff", "#6a55ec", "#9a8cf4"]) +
+      d.box(12, 8, 58, 95, 90, 54, ["#eef2f6", "#0a4a96", "#86acdc"]) +
       d.box(26, 20, 112, 66, 62, 44, CARDBOARD);
   } else if (kind === "drum") {
     shape = '<path d="M86 88v150a74 34 0 0 0 148 0V88Z" fill="url(#drum)"/>' +
-      '<ellipse cx="160" cy="88" rx="74" ry="34" fill="#dfe5ff"/>' +
-      '<ellipse cx="160" cy="88" rx="54" ry="23" fill="#c3cdfb"/>' +
+      '<ellipse cx="160" cy="88" rx="74" ry="34" fill="#dfe8f2"/>' +
+      '<ellipse cx="160" cy="88" rx="54" ry="23" fill="#c4d6ec"/>' +
       '<path d="M86 138a74 34 0 0 0 148 0M86 196a74 34 0 0 0 148 0" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="5"/>';
   } else {
     shape = '<path d="M100 66c40 12 80 12 120 0l-8 26c22 40 34 92 26 150-50 26-110 26-156 0-8-58 4-110 26-150Z" fill="url(#drum)"/>' +
-      '<path d="M100 66c40 12 80 12 120 0l-8 26c-36 12-68 12-104 0Z" fill="#dfe5ff"/>' +
+      '<path d="M100 66c40 12 80 12 120 0l-8 26c-36 12-68 12-104 0Z" fill="#dfe8f2"/>' +
       '<rect x="122" y="140" width="76" height="62" rx="8" fill="#fff" fill-opacity=".9"/>' +
-      '<path d="M136 160h48M136 176h32" stroke="#4a5ff0" stroke-width="6" stroke-linecap="round"/>';
+      '<path d="M136 160h48M136 176h32" stroke="#0b57b0" stroke-width="6" stroke-linecap="round"/>';
   }
   return '<svg class="art" viewBox="0 0 320 300" aria-hidden="true">' +
-    '<ellipse cx="160" cy="268" rx="118" ry="20" fill="#4a5ff0" fill-opacity=".14"/>' + shape + "</svg>";
+    '<ellipse cx="160" cy="268" rx="118" ry="20" fill="#0b57b0" fill-opacity=".14"/>' + shape + "</svg>";
 }
 
 // The factory in the hero. Replace with a real photo when there is one.
 function factoryArt() {
   const d = iso(330, 452);
-  const wall = ["#e8ecff", "#5d72f2", "#93a3fb"];
-  const front = ["#e8ecff", "#4a5ff0", "#7f90f8"];
-  const glass = "#c7f0ff";
+  const wall = ["#e8eef5", "#2a6fc4", "#86acdc"];
+  const front = ["#e8eef5", "#0b57b0", "#5b8fd4"];
+  const glass = "#d6e8f7";
   let s = '<svg class="art" viewBox="0 0 640 470" aria-hidden="true"><ellipse cx="330" cy="250" rx="310" ry="215" fill="url(#glow)"/>';
 
   // Ground
-  s += d.box(0, 0, 0, 300, 270, 10, ["#2c3fb8", "#121d73", "#1a288f"]);
+  s += d.box(0, 0, 0, 300, 270, 10, ["#1a4f8f", "#0f2b52", "#123a6e"]);
 
   // Chimney, behind the roof
   s += d.box(200, 160, 10, 30, 30, 215, wall);
-  s += d.box(200, 160, 200, 30, 30, 10, ["#fff", "#c7f0ff", "#c7f0ff"]);
+  s += d.box(200, 160, 200, 30, 30, 10, ["#fff", "#d6e8f7", "#d6e8f7"]);
 
   // Main building
   s += d.box(50, 50, 10, 205, 165, 95, front);
@@ -89,8 +89,8 @@ function factoryArt() {
     const a0 = 50 + i * 41;
     const a1 = a0 + 41;
     s += d.poly([d.p(a0, 215, 105), d.p(a0, 215, 142), d.p(a0, 50, 142), d.p(a0, 50, 105)], glass);
-    s += d.poly([d.p(a0, 50, 142), d.p(a1, 50, 105), d.p(a1, 215, 105), d.p(a0, 215, 142)], "#f4f6ff");
-    s += d.poly([d.p(a0, 50, 105), d.p(a1, 50, 105), d.p(a0, 50, 142)], "#93a3fb");
+    s += d.poly([d.p(a0, 50, 142), d.p(a1, 50, 105), d.p(a1, 215, 105), d.p(a0, 215, 142)], "#f5f7f9");
+    s += d.poly([d.p(a0, 50, 105), d.p(a1, 50, 105), d.p(a0, 50, 142)], "#86acdc");
   }
 
   // Windows on the right wall
@@ -99,13 +99,13 @@ function factoryArt() {
     s += d.poly([d.p(a, 50, 56), d.p(a + 30, 50, 56), d.p(a + 30, 50, 84), d.p(a, 50, 84)], glass);
   }
   // Roller door on the left wall
-  s += d.poly([d.p(50, 90, 10), d.p(50, 150, 10), d.p(50, 150, 72), d.p(50, 90, 72)], "#1a288f");
+  s += d.poly([d.p(50, 90, 10), d.p(50, 150, 10), d.p(50, 150, 72), d.p(50, 90, 72)], "#123a6e");
   for (let z = 22; z < 72; z += 12) {
-    s += d.poly([d.p(50, 90, z), d.p(50, 150, z), d.p(50, 150, z + 2), d.p(50, 90, z + 2)], "#5d72f2");
+    s += d.poly([d.p(50, 90, z), d.p(50, 150, z), d.p(50, 150, z + 2), d.p(50, 90, z + 2)], "#2a6fc4");
   }
 
   // Boxes on a pallet by the door
-  s += d.box(6, 96, 10, 34, 54, 6, ["#c7f0ff", "#5d72f2", "#93a3fb"]);
+  s += d.box(6, 96, 10, 34, 54, 6, ["#d6e8f7", "#2a6fc4", "#86acdc"]);
   s += d.box(8, 100, 16, 30, 22, 24, CARDBOARD);
   s += d.box(8, 124, 16, 30, 22, 24, CARDBOARD);
   s += d.box(8, 110, 40, 30, 24, 22, CARDBOARD);
